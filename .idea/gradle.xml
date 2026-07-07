@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="GradleSettings">
+    <option name="linkedExternalProjectsSettings">
+      <GradleProjectSettings>
+        <option name="testRunner" value="CHOOSE_PER_TEST" />
+        <option name="externalProjectPath" value="/mnt/nvme1n1p2/home/riley/Documents/Programming_Projects/AndroidStudio/AutoRewind" />
+        <option name="modules">
+          <set>
+            <option value="/mnt/nvme1n1p2/home/riley/Documents/Programming_Projects/AndroidStudio/AutoRewind" />
+            <option value="/mnt/nvme1n1p2/home/riley/Documents/Programming_Projects/AndroidStudio/AutoRewind/app" />
+          </set>
+        </option>
+      </GradleProjectSettings>
+    </option>
+  </component>
+</project>

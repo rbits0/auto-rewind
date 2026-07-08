@@ -1,8 +1,17 @@
 package com.rbits.autorewind.ui
 
+import android.Manifest
+import android.content.Context
+import android.content.Intent
+import android.os.Build
+import android.util.Log
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.material3.Button
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -13,10 +22,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.rbits.autorewind.AutoRewindService
 import com.rbits.autorewind.R
+import com.rbits.autorewind.TAG
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.DurationUnit
 
@@ -25,6 +39,8 @@ fun MainScreen(
     settingsViewModel: SettingsViewModel,
     modifier: Modifier = Modifier,
 ) {
+    val localContext = LocalContext.current
+
     val settingsState by settingsViewModel.settingsState.collectAsStateWithLifecycle()
     var rewindTimeText by remember { mutableStateOf(
         settingsState.rewindTime
@@ -33,10 +49,19 @@ fun MainScreen(
     ) }
     var rewindTimeError by remember { mutableStateOf(false) }
     // TODO: Implement
-    var serviceEnabled by remember { mutableStateOf(false) }
+    val serviceEnabled = false
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            launchForegroundService(localContext)
+        } else {
+            Log.e(TAG, "Permission denied")
+        }
+    }
 
     Column(
-        verticalArrangement = Arrangement.spacedBy(40.dp, alignment = Alignment.CenterVertically),
+        verticalArrangement = Arrangement.spacedBy(10.dp, alignment = Alignment.CenterVertically),
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = modifier
             .fillMaxSize()
@@ -57,18 +82,53 @@ fun MainScreen(
             isError = rewindTimeError,
         )
 
+        Spacer(
+            modifier = Modifier
+                .height(30.dp)
+        )
+
         Button(
-            onClick = { serviceEnabled = !serviceEnabled },
+            onClick = {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                } else {
+                    launchForegroundService(localContext)
+                }
+            },
             modifier = Modifier
                 .align(Alignment.CenterHorizontally)
         ) {
-            Text(
-                text = if (serviceEnabled) {
-                        stringResource(R.string.stop_service)
-                    } else {
-                        stringResource(R.string.start_service)
-                    },
-            )
+            Text(stringResource(R.string.start_service))
+        }
+
+        Button(
+            onClick = {
+                stopForegroundService(localContext)
+            },
+            modifier = Modifier
+                .align(Alignment.CenterHorizontally)
+        ) {
+            Text(stringResource(R.string.stop_service))
         }
     }
+}
+
+fun launchForegroundService(context: Context) {
+    if (NotificationManagerCompat.from(context).areNotificationsEnabled()) {
+        val intent = Intent(
+            context,
+            AutoRewindService::class.java
+        )
+        ContextCompat.startForegroundService(context, intent)
+    } else {
+        Log.e(TAG, "Notifications are not enabled")
+    }
+}
+
+fun stopForegroundService(context: Context) {
+    val intent = Intent(
+        context,
+        AutoRewindService::class.java
+    )
+    context.stopService(intent)
 }

@@ -1,0 +1,5 @@
+package com.rbits.autorewind
+
+import android.service.notification.NotificationListenerService
+
+class AutoRewindNotificationListenerService : NotificationListenerService()

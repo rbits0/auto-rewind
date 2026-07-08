@@ -3,4 +3,7 @@
     <string name="rewind_time_seconds">Rewind time (seconds)</string>
     <string name="start_service">Start</string>
     <string name="stop_service">Stop</string>
+    <string name="service_notification_channel_name">Media monitor</string>
+    <string name="service_notification_channel_description">This notification monitors the media playback to rewind when it is interrupted</string>
+    <string name="service_notification_name">Auto Rewind</string>
 </resources>

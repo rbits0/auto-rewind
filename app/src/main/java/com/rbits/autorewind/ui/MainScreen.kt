@@ -31,6 +31,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.rbits.autorewind.AutoRewindService
 import com.rbits.autorewind.R
 import com.rbits.autorewind.TAG
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.DurationUnit
 
@@ -54,7 +55,8 @@ fun MainScreen(
         ActivityResultContracts.RequestPermission()
     ) { isGranted ->
         if (isGranted) {
-            launchForegroundService(localContext)
+            // TODO: Re-launch foreground service when rewindTime is modified
+            launchForegroundService(localContext, settingsState.rewindTime)
         } else {
             Log.e(TAG, "Permission denied")
         }
@@ -92,7 +94,7 @@ fun MainScreen(
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                     notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                 } else {
-                    launchForegroundService(localContext)
+                    launchForegroundService(localContext, settingsState.rewindTime)
                 }
             },
             modifier = Modifier
@@ -113,12 +115,13 @@ fun MainScreen(
     }
 }
 
-fun launchForegroundService(context: Context) {
+fun launchForegroundService(context: Context, rewindTime: Duration) {
     if (NotificationManagerCompat.from(context).areNotificationsEnabled()) {
         val intent = Intent(
             context,
             AutoRewindService::class.java
         )
+        intent.putExtra("com.rbits.autorewind.rewindTimeMs", rewindTime.inWholeMilliseconds)
         ContextCompat.startForegroundService(context, intent)
     } else {
         Log.e(TAG, "Notifications are not enabled")

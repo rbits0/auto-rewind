@@ -28,6 +28,7 @@ class AutoRewindService : Service() {
     private lateinit var mediaSessionManager: MediaSessionManager
     private var mediaPauseCallback: MediaController.Callback? = null
     private var activeSession: MediaController? = null
+    var rewindTimeMs = 5_000L
 
     // TODO: Update UI with foreground service state:
 //    private val _isForegroundServiceRunning = MutableStateFlow(false)
@@ -44,6 +45,11 @@ class AutoRewindService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        val rewindTimeMs = intent?.extras?.getLong("com.rbits.autorewind.rewindTimeMs")
+        if (rewindTimeMs != null){
+            this.rewindTimeMs = rewindTimeMs
+        }
+
         startForeground()
 //        _isForegroundServiceRunning.update { true }
 
@@ -198,8 +204,7 @@ class AutoRewindService : Service() {
         // TODO: Check if sessionName matches a target session
 
         val position = mediaController.playbackState?.position ?: return
-        // TODO: Use user-configured rewind time
-        val newPosition = position - 5_000L
+        val newPosition = position - rewindTimeMs
 
         mediaController.transportControls.seekTo(newPosition)
     }

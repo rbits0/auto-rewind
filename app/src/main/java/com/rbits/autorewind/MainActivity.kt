@@ -77,7 +77,7 @@ class MainActivity : ComponentActivity() {
     private fun createNotificationChannel() {
         val notificationChannel = NotificationChannelCompat.Builder(
             AUTO_REWIND_SERVICE_CHANNEL_ID,
-            NotificationManager.IMPORTANCE_MAX,
+            NotificationManager.IMPORTANCE_LOW,
         )
             .setName(getString(R.string.service_notification_channel_name))
             .setDescription(getString(R.string.service_notification_channel_description))

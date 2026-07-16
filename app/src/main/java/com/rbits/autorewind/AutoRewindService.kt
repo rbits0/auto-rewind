@@ -118,7 +118,7 @@ class AutoRewindService : Service() {
         )
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentTitle(getString(R.string.service_notification_name))
-            .setPriority(NotificationCompat.PRIORITY_MAX)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
             .setOngoing(true)
             .setSilent(true)
             .setContentIntent(contentPendingIntent)

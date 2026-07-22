@@ -16,7 +16,8 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.AutoRewind">
+        android:theme="@style/Theme.AutoRewind"
+        android:name=".AutoRewindApplication">
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -44,7 +45,8 @@
         <service
             android:name=".AutoRewindService"
             android:foregroundServiceType="specialUse"
-            android:exported="false">
+            android:exported="false"
+            android:process=":auto_rewind_service_process">
             <property
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="Monitors for media playback being interrupted" />

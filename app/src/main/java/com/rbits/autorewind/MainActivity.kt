@@ -1,27 +1,26 @@
 package com.rbits.autorewind
 
 import android.app.NotificationManager
-import android.content.Context
+import android.content.ComponentName
+import android.content.ServiceConnection
 import android.os.Bundle
+import android.os.IBinder
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.ui.Modifier
 import androidx.core.app.NotificationChannelCompat
 import androidx.core.app.NotificationManagerCompat
-import androidx.datastore.dataStore
-import androidx.lifecycle.viewmodel.compose.viewModel
-import com.rbits.autorewind.data.SettingsRepository
-import com.rbits.autorewind.data.SettingsSerializer
 import com.rbits.autorewind.ui.MainScreen
 import com.rbits.autorewind.ui.SettingsViewModel
 import com.rbits.autorewind.ui.theme.AutoRewindTheme
+import dagger.hilt.android.AndroidEntryPoint
 
 const val TAG: String = "com.rbits.autorewind"
-const val SETTINGS_STORE_FILE_NAME = "settings.json"
 const val AUTO_REWIND_SERVICE_CHANNEL_ID = "auto_rewind_service"
 
 const val NOTIFICATION_ID_AUTO_REWIND_SERVICE = 100
@@ -29,13 +28,10 @@ const val REQUEST_CODE_MAIN_ACTIVITY = 101
 const val REQUEST_CODE_ACTION_STOP_AUTO_REWIND = 102
 const val ACTION_STOP_AUTO_REWIND = "com.rbits.autorewind.ACTION_STOP_AUTO_REWIND"
 
-private val Context.settingsStore by dataStore(
-    fileName = SETTINGS_STORE_FILE_NAME,
-    serializer = SettingsSerializer,
-)
-
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
-//    val isForegroundServiceRunning = MutableSharedFlow<Boolean>()
+    private lateinit var autoRewindService: AutoRewindService
+    private var autoRewindServiceBound: Boolean = false
 
 //    val autoRewindServiceConnection = object : ServiceConnection {
 //        override fun onServiceConnected(componentName: ComponentName?, binder: IBinder?) {
@@ -47,21 +43,15 @@ class MainActivity : ComponentActivity() {
 //            TODO("Not yet implemented")
 //        }
 //    }
+    private val settingsViewModel: SettingsViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-//        val intent = Intent(this, AutoRewindService::class.java)
-//        bindService(intent)
-
         createNotificationChannel()
 
         setContent {
-            val settingsViewModel: SettingsViewModel = viewModel {
-                SettingsViewModel(SettingsRepository(settingsStore))
-            }
-
             AutoRewindTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     MainScreen(

@@ -14,8 +14,7 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import java.io.InputStream
 import java.io.OutputStream
-import kotlin.time.Duration
-import kotlin.time.Duration.Companion.seconds
+import javax.inject.Inject
 
 
 @Serializable
@@ -45,7 +44,7 @@ object SettingsSerializer : Serializer<Settings> {
     }
 }
 
-class SettingsRepository(private val settingsStore: DataStore<Settings>) {
+class SettingsRepository @Inject constructor(private val settingsStore: DataStore<Settings>) {
     val settingsFlow = settingsStore.data
         .catch { exception ->
             if (exception is IOException) {

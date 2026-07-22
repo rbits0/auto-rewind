@@ -18,16 +18,29 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.PendingIntentCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.app.TaskStackBuilder
+import androidx.datastore.core.DataStore
+import com.rbits.autorewind.data.Settings
+import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+import javax.inject.Inject
 
+
+@AndroidEntryPoint
 class AutoRewindService : Service() {
     inner class AutoRewindServiceBinder() : Binder() {
         fun getService() = this@AutoRewindService
     }
-    val binder = AutoRewindServiceBinder()
+    private val binder = AutoRewindServiceBinder()
 
+    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private lateinit var mediaSessionManager: MediaSessionManager
     private var mediaPauseCallback: MediaController.Callback? = null
     private var activeSession: MediaController? = null
+    @Inject
+    lateinit var settingsDataStore: DataStore<Settings>
     var rewindTimeMs = 5_000L
 
     // TODO: Update UI with foreground service state:
@@ -35,9 +48,16 @@ class AutoRewindService : Service() {
 //    var isForegroundServiceRunning = _isForegroundServiceRunning.asStateFlow()
 
     override fun onCreate() {
+        super.onCreate()
+
         mediaSessionManager = getSystemService(MediaSessionManager::class.java)
 
-        super.onCreate()
+        serviceScope.launch {
+            settingsDataStore.data.collect { settings ->
+                // TODO: Restart listener with new rewindTimeMs
+                rewindTimeMs = settings.rewindTimeMs
+            }
+        }
     }
 
     override fun onBind(intent: Intent?): IBinder {
@@ -118,6 +138,7 @@ class AutoRewindService : Service() {
         )
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentTitle(getString(R.string.service_notification_name))
+            .setContentText("rewindTimeMs: $rewindTimeMs")
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setOngoing(true)
             .setSilent(true)

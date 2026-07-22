@@ -31,9 +31,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.rbits.autorewind.AutoRewindService
 import com.rbits.autorewind.R
 import com.rbits.autorewind.TAG
-import kotlin.time.Duration
-import kotlin.time.Duration.Companion.seconds
-import kotlin.time.DurationUnit
 
 @Composable
 fun MainScreen(
@@ -43,10 +40,11 @@ fun MainScreen(
     val localContext = LocalContext.current
 
     val settingsState by settingsViewModel.settingsState.collectAsStateWithLifecycle()
-    var rewindTimeText by remember { mutableStateOf(
-        settingsState.rewindTime
-            .toDouble(DurationUnit.SECONDS)
-            .toString()
+    val (settings, isSettingsLoaded) = settingsState
+    // isSettingsLoaded is a key for remember because when settings finishes loading we need to
+    // replace the default value with the actual loaded value
+    var rewindTimeText by remember(isSettingsLoaded) { mutableStateOf(
+        (settings.rewindTimeMs.toFloat() / 1_000).toString()
     ) }
     var rewindTimeError by remember { mutableStateOf(false) }
     // TODO: Implement
@@ -56,9 +54,21 @@ fun MainScreen(
     ) { isGranted ->
         if (isGranted) {
             // TODO: Re-launch foreground service when rewindTime is modified
-            launchForegroundService(localContext, settingsState.rewindTime)
+            launchForegroundService(localContext, settings.rewindTimeMs)
         } else {
             Log.e(TAG, "Permission denied")
+        }
+    }
+
+    fun onRewindTimeTextChanged(value: String) {
+        rewindTimeText = value
+
+        val seconds = value.toFloatOrNull()
+        if (seconds != null) {
+            settingsViewModel.setRewindTime((seconds * 1_000).toLong())
+            rewindTimeError = false
+        } else {
+            rewindTimeError = true
         }
     }
 
@@ -70,16 +80,7 @@ fun MainScreen(
     ) {
         OutlinedTextField(
             value = rewindTimeText,
-            onValueChange = { value ->
-                rewindTimeText = value
-
-                try {
-                    settingsViewModel.setRewindTime(value.toDouble().seconds)
-                    rewindTimeError = false
-                } catch (_: Exception) {
-                    rewindTimeError = true
-                }
-            },
+            onValueChange = ::onRewindTimeTextChanged,
             label = { Text(stringResource(R.string.rewind_time_seconds)) },
             isError = rewindTimeError,
         )
@@ -94,7 +95,7 @@ fun MainScreen(
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                     notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                 } else {
-                    launchForegroundService(localContext, settingsState.rewindTime)
+                    launchForegroundService(localContext, settings.rewindTimeMs)
                 }
             },
             modifier = Modifier
@@ -115,13 +116,13 @@ fun MainScreen(
     }
 }
 
-fun launchForegroundService(context: Context, rewindTime: Duration) {
+fun launchForegroundService(context: Context, rewindTimeMs: Long) {
     if (NotificationManagerCompat.from(context).areNotificationsEnabled()) {
         val intent = Intent(
             context,
             AutoRewindService::class.java
         )
-        intent.putExtra("com.rbits.autorewind.rewindTimeMs", rewindTime.inWholeMilliseconds)
+        intent.putExtra("com.rbits.autorewind.rewindTimeMs", rewindTimeMs)
         ContextCompat.startForegroundService(context, intent)
     } else {
         Log.e(TAG, "Notifications are not enabled")

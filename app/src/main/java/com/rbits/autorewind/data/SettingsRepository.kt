@@ -20,7 +20,7 @@ import kotlin.time.Duration.Companion.seconds
 
 @Serializable
 data class Settings(
-    val rewindTime: Duration = 5.seconds,
+    val rewindTimeMs: Long = 5_000L,
 )
 
 object SettingsSerializer : Serializer<Settings> {
@@ -56,9 +56,9 @@ class SettingsRepository(private val settingsStore: DataStore<Settings>) {
             }
         }
 
-    suspend fun setRewindTime(rewindTime: Duration) {
+    suspend fun setRewindTime(rewindTimeMs: Long) {
         settingsStore.updateData { settings ->
-            settings.copy(rewindTime = rewindTime)
+            settings.copy(rewindTimeMs = rewindTimeMs)
         }
     }
 }

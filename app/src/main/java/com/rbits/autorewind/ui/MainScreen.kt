@@ -9,9 +9,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
 import androidx.compose.material3.Button
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -77,7 +75,7 @@ fun MainScreen(
     }
 
     Column(
-        verticalArrangement = Arrangement.spacedBy(10.dp, alignment = Alignment.CenterVertically),
+        verticalArrangement = Arrangement.spacedBy(40.dp, alignment = Alignment.CenterVertically),
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = modifier
             .fillMaxSize()
@@ -87,11 +85,6 @@ fun MainScreen(
             onValueChange = ::onRewindTimeTextChanged,
             label = { Text(stringResource(R.string.rewind_time_seconds)) },
             isError = rewindTimeError,
-        )
-
-        Spacer(
-            modifier = Modifier
-                .height(30.dp)
         )
 
         if (isForegroundServiceRunning) {

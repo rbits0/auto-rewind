@@ -10,9 +10,13 @@ import android.content.pm.ServiceInfo
 import android.media.session.MediaController
 import android.media.session.MediaSessionManager
 import android.media.session.PlaybackState
-import android.os.Binder
 import android.os.Build
+import android.os.DeadObjectException
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
+import android.os.Message
+import android.os.Messenger
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.PendingIntentCompat
@@ -24,29 +28,75 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import java.lang.ref.WeakReference
 import javax.inject.Inject
 
 
 @AndroidEntryPoint
 class AutoRewindService : Service() {
-    inner class AutoRewindServiceBinder() : Binder() {
-        fun getService() = this@AutoRewindService
-    }
-    private val binder = AutoRewindServiceBinder()
-
+    private val messengerClients: MutableList<Messenger> = mutableListOf()
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private lateinit var mediaSessionManager: MediaSessionManager
     private var mediaPauseCallback: MediaController.Callback? = null
     private var activeSession: MediaController? = null
+
     @Inject
     lateinit var settingsDataStore: DataStore<Settings>
     var rewindTimeMs = 5_000L
 
     // TODO: Update UI with foreground service state:
-//    private val _isForegroundServiceRunning = MutableStateFlow(false)
-//    var isForegroundServiceRunning = _isForegroundServiceRunning.asStateFlow()
+    var isForegroundServiceRunning = false
+        set(value) {
+            field = value
+            sendForegroundServiceState()
+        }
 
+    private fun sendForegroundServiceState() {
+        val what = if (isForegroundServiceRunning) {
+            MSG_FOREGROUND_SERVICE_RUNNING
+        } else {
+            MSG_FOREGROUND_SERVICE_STOPPED
+        }
+
+        for (messengerClient in messengerClients) {
+            try {
+                val message = Message.obtain(null, what)
+                messengerClient.send(message)
+            } catch (_: DeadObjectException) {
+                // messengerClient is dead
+                messengerClients.remove(messengerClient)
+            }
+        }
+    }
+
+    companion object {
+        const val MSG_REGISTER_CLIENT = 1
+        const val MSG_UNREGISTER_CLIENT = 2
+        const val MSG_FOREGROUND_SERVICE_RUNNING = 3
+        const val MSG_FOREGROUND_SERVICE_STOPPED = 4
+    }
+
+
+    // TODO: Test whether Looper.getMainLooper() works as intended when starting AutoRewindService
+    // from outside the app
+    class IncomingHandler(service: AutoRewindService) : Handler(Looper.getMainLooper()) {
+        val service = WeakReference(service)
+
+        override fun handleMessage(msg: Message) {
+            when (msg.what) {
+                MSG_REGISTER_CLIENT -> {
+                    service.get()?.messengerClients?.add(msg.replyTo)
+                    service.get()?.sendForegroundServiceState()
+                }
+                MSG_UNREGISTER_CLIENT -> service.get()?.messengerClients?.remove(msg.replyTo)
+                else -> super.handleMessage(msg)
+            }
+        }
+    }
+
+    private val messenger = Messenger(IncomingHandler(this))
     override fun onCreate() {
         super.onCreate()
 
@@ -54,26 +104,29 @@ class AutoRewindService : Service() {
 
         serviceScope.launch {
             settingsDataStore.data.collect { settings ->
-                // TODO: Restart listener with new rewindTimeMs
                 rewindTimeMs = settings.rewindTimeMs
             }
         }
     }
 
-    override fun onBind(intent: Intent?): IBinder {
-        return binder
-    }
+    override fun onBind(intent: Intent?): IBinder = messenger.binder
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val rewindTimeMs = intent?.extras?.getLong("com.rbits.autorewind.rewindTimeMs")
-        if (rewindTimeMs != null){
-            this.rewindTimeMs = rewindTimeMs
+    override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
+        when (intent.action) {
+            ACTION_START_AUTO_REWIND -> startForeground()
+            ACTION_STOP_AUTO_REWIND -> stopForeground()
+            else -> Log.e(TAG, "Invalid action for AutoRewindService")
         }
 
-        startForeground()
-//        _isForegroundServiceRunning.update { true }
-
         return super.onStartCommand(intent, flags, startId)
+    }
+
+    override fun onDestroy() {
+        stopForeground()
+        serviceScope.cancel()
+
+        Log.i(TAG, "AutoRewindService destroyed")
+        super.onDestroy()
     }
 
     fun startForeground() {
@@ -81,19 +134,17 @@ class AutoRewindService : Service() {
 
         createForegroundServiceNotification()
         registerAutoRewindCallback()
+        isForegroundServiceRunning = true
         // TODO: Unregister and register new callback when event from addOnActiveSessionsChangedListener
     }
 
-    override fun onDestroy() {
+    fun stopForeground() {
         unregisterAutoRewindCallback()
         ServiceCompat.stopForeground(
             this,
             ServiceCompat.STOP_FOREGROUND_REMOVE
         )
-//        _isForegroundServiceRunning.update { false }
-
-        Log.i(TAG, "AutoRewindService destroyed")
-        super.onDestroy()
+        isForegroundServiceRunning = false
     }
 
     private fun createForegroundServiceNotification() {
@@ -138,7 +189,6 @@ class AutoRewindService : Service() {
         )
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentTitle(getString(R.string.service_notification_name))
-            .setContentText("rewindTimeMs: $rewindTimeMs")
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setOngoing(true)
             .setSilent(true)
@@ -220,7 +270,7 @@ class AutoRewindService : Service() {
     }
 
     private fun rewind(mediaController: MediaController) {
-        Log.i(TAG, "Rewinding")
+        Log.i(TAG, "Rewinding $rewindTimeMs ms")
         val sessionName = mediaController.packageName
         // TODO: Check if sessionName matches a target session
 

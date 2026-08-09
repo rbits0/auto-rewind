@@ -56,6 +56,7 @@
             android:name=".AutoRewindBroadcastReceiver"
             android:exported="false" >
             <intent-filter>
+                <action android:name="com.rbits.autorewind.ACTION_START_AUTO_REWIND" />
                 <action android:name="com.rbits.autorewind.ACTION_STOP_AUTO_REWIND" />
             </intent-filter>
         </receiver>

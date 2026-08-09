@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.util.Log
+import androidx.core.content.ContextCompat
 
 class AutoRewindBroadcastReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context?, intent: Intent?) {
@@ -13,12 +14,13 @@ class AutoRewindBroadcastReceiver : BroadcastReceiver() {
                 return
             }
 
-            // Stop service
+            // Stop foreground service
             val intent = Intent(
                 context,
                 AutoRewindService::class.java
             )
-            context.stopService(intent)
+            intent.action = ACTION_STOP_AUTO_REWIND
+            ContextCompat.startForegroundService(context, intent)
         }
     }
 }

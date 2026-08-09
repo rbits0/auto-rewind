@@ -37,12 +37,14 @@ import com.rbits.autorewind.TAG
 @Composable
 fun MainScreen(
     settingsViewModel: SettingsViewModel,
+    serviceStateViewModel: ServiceStateViewModel,
     modifier: Modifier = Modifier,
 ) {
     val localContext = LocalContext.current
 
     val settingsState by settingsViewModel.settingsState.collectAsStateWithLifecycle()
     val (settings, isSettingsLoaded) = settingsState
+    val isForegroundServiceRunning by serviceStateViewModel.isForegroundServiceRunning.collectAsStateWithLifecycle()
     // isSettingsLoaded is a key for remember because when settings finishes loading we need to
     // replace the default value with the actual loaded value
     var rewindTimeText by remember(isSettingsLoaded) {
@@ -51,8 +53,6 @@ fun MainScreen(
         )
     }
     var rewindTimeError by remember { mutableStateOf(false) }
-    // TODO: Implement
-    val serviceEnabled = false
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { isGranted ->
@@ -94,28 +94,32 @@ fun MainScreen(
                 .height(30.dp)
         )
 
-        Button(
-            onClick = {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                } else {
-                    launchForegroundService(localContext)
-                }
-            },
-            modifier = Modifier
-                .align(Alignment.CenterHorizontally)
-        ) {
-            Text(stringResource(R.string.start_service))
-        }
-
-        Button(
-            onClick = {
-                stopForegroundService(localContext)
-            },
-            modifier = Modifier
-                .align(Alignment.CenterHorizontally)
-        ) {
-            Text(stringResource(R.string.stop_service))
+        if (isForegroundServiceRunning) {
+            // Stop button
+            Button(
+                onClick = {
+                    stopForegroundService(localContext)
+                },
+                modifier = Modifier
+                    .align(Alignment.CenterHorizontally)
+            ) {
+                Text(stringResource(R.string.stop_service))
+            }
+        } else {
+            // Start button
+            Button(
+                onClick = {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    } else {
+                        launchForegroundService(localContext)
+                    }
+                },
+                modifier = Modifier
+                    .align(Alignment.CenterHorizontally)
+            ) {
+                Text(stringResource(R.string.start_service))
+            }
         }
     }
 }

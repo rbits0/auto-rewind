@@ -24,6 +24,7 @@ import androidx.core.app.NotificationManagerCompat
 import com.rbits.autorewind.AutoRewindService.Companion.MSG_REGISTER_CLIENT
 import com.rbits.autorewind.AutoRewindService.Companion.MSG_UNREGISTER_CLIENT
 import com.rbits.autorewind.ui.MainScreen
+import com.rbits.autorewind.ui.ServiceStateViewModel
 import com.rbits.autorewind.ui.SettingsViewModel
 import com.rbits.autorewind.ui.theme.AutoRewindTheme
 import dagger.hilt.android.AndroidEntryPoint
@@ -42,6 +43,10 @@ const val ACTION_STOP_AUTO_REWIND = "com.rbits.autorewind.ACTION_STOP_AUTO_REWIN
 class MainActivity : ComponentActivity() {
     private var autoRewindServiceMessenger: Messenger? = null
     var isForegroundServiceRunning = false
+        set(value) {
+            field = value
+            updateAutoRewindServiceState()
+        }
 
     class IncomingHandler(activity: MainActivity) : Handler(Looper.getMainLooper()) {
         val activity = WeakReference(activity)
@@ -79,9 +84,11 @@ class MainActivity : ComponentActivity() {
         override fun onServiceDisconnected(p0: ComponentName) {
             // AutoRewindService crashed
             autoRewindServiceMessenger = null
+            updateAutoRewindServiceState()
         }
     }
     private val settingsViewModel: SettingsViewModel by viewModels()
+    private val serviceStateViewModel: ServiceStateViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -94,6 +101,7 @@ class MainActivity : ComponentActivity() {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     MainScreen(
                         settingsViewModel = settingsViewModel,
+                        serviceStateViewModel = serviceStateViewModel,
                         modifier = Modifier
                             .padding(innerPadding)
                     )
@@ -133,6 +141,7 @@ class MainActivity : ComponentActivity() {
 
         unbindService(autoRewindServiceConnection)
         autoRewindServiceMessenger = null
+        updateAutoRewindServiceState()
     }
 
     private fun createNotificationChannel() {
@@ -145,5 +154,11 @@ class MainActivity : ComponentActivity() {
             .build()
         val notificationManager = NotificationManagerCompat.from(this)
         notificationManager.createNotificationChannel(notificationChannel)
+    }
+
+    private fun updateAutoRewindServiceState() {
+        serviceStateViewModel.setIsForegroundServiceRunning(
+            isForegroundServiceRunning && autoRewindServiceMessenger != null
+        )
     }
 }

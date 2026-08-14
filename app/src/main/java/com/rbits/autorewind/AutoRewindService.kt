@@ -48,7 +48,6 @@ class AutoRewindService : Service() {
     lateinit var settingsDataStore: DataStore<Settings>
     var rewindTimeMs = 5_000L
 
-    // TODO: Update UI with foreground service state:
     var isForegroundServiceRunning = false
         set(value) {
             field = value
@@ -148,7 +147,6 @@ class AutoRewindService : Service() {
         registerAutoRewindCallback()
         registerOnActiveSessionsChangedListener()
         isForegroundServiceRunning = true
-        // TODO: Unregister and register new callback when event from addOnActiveSessionsChangedListener
     }
 
     fun stopForeground() {

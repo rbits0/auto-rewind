@@ -55,7 +55,6 @@ fun MainScreen(
         ActivityResultContracts.RequestPermission()
     ) { isGranted ->
         if (isGranted) {
-            // TODO: Re-launch foreground service when rewindTime is modified
             launchForegroundService(localContext)
         } else {
             Log.e(TAG, "Permission denied")

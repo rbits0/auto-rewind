@@ -159,6 +159,8 @@ class AutoRewindService : Service() {
             ServiceCompat.STOP_FOREGROUND_REMOVE
         )
         isForegroundServiceRunning = false
+
+        stopSelf()
     }
 
     private fun createForegroundServiceNotification() {

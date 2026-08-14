@@ -114,6 +114,15 @@ class AutoRewindService : Service() {
 
     override fun onBind(intent: Intent?): IBinder = messenger.binder
 
+    override fun onUnbind(intent: Intent?): Boolean {
+        // Must manually stop service on unbind, since onStartCommand is implemented
+        if (!isForegroundServiceRunning) {
+            stopSelf()
+        }
+
+        return false
+    }
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_START_AUTO_REWIND -> startForeground()

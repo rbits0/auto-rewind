@@ -40,6 +40,8 @@ class AutoRewindService : Service() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private lateinit var mediaSessionManager: MediaSessionManager
     private var mediaPauseCallback: MediaController.Callback? = null
+    private var activeSessionsChangedListener: MediaSessionManager.OnActiveSessionsChangedListener? =
+        null
     private var activeSession: MediaController? = null
 
     @Inject
@@ -90,6 +92,7 @@ class AutoRewindService : Service() {
                     service.get()?.messengerClients?.add(msg.replyTo)
                     service.get()?.sendForegroundServiceState()
                 }
+
                 MSG_UNREGISTER_CLIENT -> service.get()?.messengerClients?.remove(msg.replyTo)
                 else -> super.handleMessage(msg)
             }
@@ -134,12 +137,14 @@ class AutoRewindService : Service() {
 
         createForegroundServiceNotification()
         registerAutoRewindCallback()
+        registerOnActiveSessionsChangedListener()
         isForegroundServiceRunning = true
         // TODO: Unregister and register new callback when event from addOnActiveSessionsChangedListener
     }
 
     fun stopForeground() {
         unregisterAutoRewindCallback()
+        unregisterOnActiveSessionsChangedListener()
         ServiceCompat.stopForeground(
             this,
             ServiceCompat.STOP_FOREGROUND_REMOVE
@@ -212,14 +217,48 @@ class AutoRewindService : Service() {
     }
 
     /**
+     * Registers a callback to re-register the auto rewind callback whenever the active session
+     * changes
+     */
+    private fun registerOnActiveSessionsChangedListener() {
+        val activeSessionsChangedListener =
+            MediaSessionManager.OnActiveSessionsChangedListener { controllers ->
+                val activeSession = controllers?.firstOrNull()
+                registerAutoRewindCallback(activeSession)
+            }
+
+        mediaSessionManager.addOnActiveSessionsChangedListener(
+            activeSessionsChangedListener,
+            ComponentName(
+                this,
+                AutoRewindNotificationListenerService::class.java
+            ),
+        )
+
+        this.activeSessionsChangedListener = activeSessionsChangedListener
+    }
+
+    /**
+     * Unregisters activeSessionsChangedListener if it is registered
+     */
+    private fun unregisterOnActiveSessionsChangedListener() {
+        val activeSessionsChangedListener = this.activeSessionsChangedListener ?: return
+
+        mediaSessionManager.removeOnActiveSessionsChangedListener(
+            activeSessionsChangedListener
+        )
+        this.activeSessionsChangedListener = null
+    }
+
+    /**
      * Registers (or re-registers) a callback to automatically rewind the media
      */
-    private fun registerAutoRewindCallback() {
+    private fun registerAutoRewindCallback(activeSession: MediaController? = null) {
         Log.i(TAG, "Registering auto rewind callback")
 
         unregisterAutoRewindCallback()
 
-        val activeSession = getActiveSession() ?: return
+        val activeSession = activeSession ?: getActiveSession() ?: return
 
         // Register callback
         val mediaPauseCallback = (object : MediaController.Callback() {

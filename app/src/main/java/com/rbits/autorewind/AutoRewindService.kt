@@ -276,8 +276,6 @@ class AutoRewindService : Service() {
             var previousState: PlaybackState? = null
 
             override fun onPlaybackStateChanged(state: PlaybackState?) {
-                Log.i(TAG, "onPlaybackStateChanged: $state")
-
                 // Check that the state has changed to STATE_PAUSED
                 val previousState = this.previousState
                 this.previousState = state
